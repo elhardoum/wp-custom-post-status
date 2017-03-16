@@ -78,6 +78,7 @@ class CustomPostStatus
 		add_action("admin_footer-post.php", array($this, "append_to_post_status_dropdown"));
 		add_action("admin_footer-edit.php", array($this, "append_to_inline_status_dropdown"));
 		add_filter("display_post_states", array($this, "update_post_status"));
+        add_action('admin_init', array($this, 'addCustomViews'));
 	}
 
 	/**
@@ -163,4 +164,55 @@ class CustomPostStatus
 
 	    return $states;
 	}
+
+    /**
+      * Add tab items to admin posts table for our
+      * custom statuses, alongside the defaults
+      * All|Published|Trash ..
+      *
+      * @author elhardoum
+      */
+    public function addCustomViews()
+    {
+        global $pagenow;
+
+        switch ( $pagenow ) {
+            case 'edit.php':
+                break;
+            default:
+                return;
+                break;
+        }
+
+        if ( $this->post_types ) {
+            foreach ( (array) $this->post_types as $post_type ) {
+                add_filter("views_edit-{$post_type}", array($this, 'parseViewsLink'));
+            }
+        }
+    }
+
+    /**
+      * Parse custom post statuses tab HTML link
+      *
+      * @author elhardoum
+      */
+    public function parseViewsLink($links)
+    {
+        $post_type = preg_replace('/^views_edit-/si', '', current_filter());
+
+        if ( !isset($links[$this->post_status]) ) {
+            $status = $this->post_status;
+
+            $links[$this->post_status] = sprintf(
+                '<a href="edit.php?post_status=%1$s&#038;post_type=%2$s" %5$s>%3$s <span class="count">(%4$d)</span></a>',
+                $this->post_status,
+                $post_type,
+                $this->applied_label,
+                wp_count_posts($post_type)->$status,
+                get_query_var('post_status') == $status ? 'class="current"' : ''
+            );
+        }
+
+        return $links;  
+    }
 }
